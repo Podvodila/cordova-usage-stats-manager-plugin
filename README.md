@@ -12,7 +12,7 @@ var error = function(error){
 	console.log("Error :: " + error);
 };
 
-UsageStatistics.getUsageStatistics("Daily", success, error);
+UsageStatistics.getTimeInForeground(fromInMs, toInMs, success, error);
 ```
 If you need to prompt the user for permission
 ```javascript
