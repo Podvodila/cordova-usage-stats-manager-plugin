@@ -1,4 +1,4 @@
-package com.mobileaccord.geopoll.plugins;
+package com.podvodila.geopoll.plugins;
 
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
@@ -42,6 +42,10 @@ public class MyUsageStatsManager extends CordovaPlugin {
                 this.getTimeInForeground(args.getLong(0), args.getLong(1), callbackContext);
 
                 return true;
+            } else if (action.equals("getEvents")) {
+                this.getEvents(args.getLong(0), args.getLong(1), callbackContext);
+
+                return true;
             }
         } catch (Exception e) {
             Log.e(LOG_TAG, "execute exception", e);
@@ -52,14 +56,45 @@ public class MyUsageStatsManager extends CordovaPlugin {
         return false;
     }
 
+    private void getEvents(long startTimestamp, long endTimestamp, CallbackContext callbackContext) {
+        try {
+            UsageEvents usageEvents = mUsageStatsManager.queryEvents(startTimestamp, endTimestamp);
+
+            HashMap<String, ArrayList<JSONObject>> packageEvents = new HashMap<>();
+
+            while (usageEvents.hasNextEvent()) {
+                Event currentEvent = new Event();
+                usageEvents.getNextEvent(currentEvent);
+                String packageName = currentEvent.getPackageName();
+
+                if (currentEvent.getEventType() == Event.ACTIVITY_RESUMED ||
+                    currentEvent.getEventType() == Event.ACTIVITY_PAUSED ||
+                    currentEvent.getEventType() == Event.ACTIVITY_STOPPED) {
+                    if (!packageEvents.containsKey(packageName)) {
+                        packageEvents.put(packageName, new ArrayList<JSONObject>());
+                    }
+
+                    packageEvents
+                        .get(packageName)
+                        .add(this.eventToJSON(currentEvent));
+                }
+            }
+
+            JSONObject resultObject = new JSONObject(packageEvents);
+
+            callbackContext.success(resultObject.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+            callbackContext.error(e.toString());
+        }
+    }
+
     private void getTimeInForeground(long startTimestamp, long endTimestamp, CallbackContext callbackContext) {
         try {
             UsageEvents usageEvents = mUsageStatsManager.queryEvents(startTimestamp, endTimestamp);
 
             HashMap<String, ArrayList<Event>> packageEvents = new HashMap<>();
             HashMap<String, Long> result = new HashMap<>();
-
-
 
             while (usageEvents.hasNextEvent()) {
                 Event currentEvent = new Event();
@@ -122,7 +157,6 @@ public class MyUsageStatsManager extends CordovaPlugin {
             JSONObject resultObject = new JSONObject(result);
 
             callbackContext.success(resultObject.toString());
-
         } catch (Exception e) {
             e.printStackTrace();
             callbackContext.error(e.toString());
@@ -134,7 +168,6 @@ public class MyUsageStatsManager extends CordovaPlugin {
         object.put("className", event.getClassName());
         //object.put("configuration", event.getConfiguration());
         object.put("eventType", event.getEventType());
-        object.put("packageName", event.getPackageName());
         object.put("timestamp", event.getTimeStamp());
         return object;
     }
